@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::{Sub};
 
 pub struct Maze {
     width: usize,
@@ -25,53 +26,44 @@ impl Maze {
 
 impl fmt::Display for Maze {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let fence = |low, high, end, gap, post| ->
-            end();
+        fn fence<End, Gap, Post>(f: &mut fmt::Formatter,
+                                 low: usize,
+                                 high: usize,
+                                 end: End,
+                                 gap: Gap,
+                                 post: Post) -> fmt::Result
+            where End : Fn(&mut fmt::Formatter) -> fmt::Result,
+                  Gap : Fn(&mut fmt::Formatter, usize) -> fmt::Result ,
+                 Post : Fn(&mut fmt::Formatter, usize) -> fmt::Result {
+            end(f);
             for v in low..high - 1 {
-                gap(v);
-                post(v);
+                gap(f, v);
+                post(f, v);
             }
-            gap(high - 1);
-            end();
-        };
-        let rwall = |f: &mut fmt::Formatter, x, y| -> () {
-            let r = self.right_open[x + y * (self.width - 1)];
-            write!(f, "{}", if r { ' ' } else { '|' });
-        };
-        write!(f, "+");
-        for x in 0..self.width {
-            write!(f, "-+");
-        }
-        writeln!(f, "");
-
-        for y in 0..self.height - 1 {
-            write!(f, "|");
-            for x in 0..self.width - 1 {
-                write!(f, " ");
-                rwall(f, x, y);
-            }
-            write!(f, " ");
-            writeln!(f, "|");
-            write!(f, "+");
-            for x in 0..self.width {
-                let d = self.down_open[x + y * self.width];
-                write!(f, "{}", if d { ' ' } else { '-' });
-                write!(f, "+");
-            }
+            gap(f, high - 1);
+            end(f);
             writeln!(f, "");
-        }
-        write!(f, "|");
-        for x in 0..self.width - 1 {
-            write!(f, " ");
-            rwall(f, x, self.height - 1);
-        }
-        write!(f, " ");
-        writeln!(f, "|");
-        write!(f, "+");
-        for x in 0..self.width {
-            write!(f, "-+");
-        }
+            Ok(())
+        };
+        fence(f, 0, self.height,
+              |f| fence(f, 0, self.width,
+                        |f| write!(f, "+"),
+                        |f,_| write!(f, " "),
+                        |f,_| write!(f, "+")),
+              |f, y| fence(f, 0, self.width,
+                           |f| write!(f, "|"),
+                           |f, x| write!(f, " "),
+                           |f, x| {
+                               let r = self.right_open[x + y * (self.width - 1)];
+                               write!(f, "{}", if r { ' ' } else { '|' })
+                           }),
+              |f, y| fence(f, 0, self.width,
+                           |f| write!(f, "+"),
+                           |f, x| {
+                               let r = self.down_open[x + y * self.width];
+                               write!(f, "{}", if r { ' ' } else { '-' })
+                           },
+                           |f, x| write!(f, "+")));
         writeln!(f, "");
         Ok(())
     }

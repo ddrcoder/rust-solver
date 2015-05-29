@@ -1,5 +1,4 @@
 use std::fmt;
-use std::ops::{Sub};
 
 pub struct Maze {
     width: usize,
@@ -14,7 +13,6 @@ pub struct Maze {
 
 impl Maze {
     pub fn new(width: usize, height: usize) -> Maze {
-        let a = [false; 10];
         Maze {
             width: width,
             height: height,
@@ -22,50 +20,44 @@ impl Maze {
             down_open: vec![false; width * (height - 1)],
         }
     }
+    pub fn left(&self, x: usize, y: usize) -> bool {
+        return x > 0 && self.right_open[x - 1 + y * (self.width - 1)]
+    }
+    pub fn down(&self, x: usize, y: usize) -> bool {
+        return y < self.height - 1 && self.down_open[x + y * self.width]
+    }
+    pub fn up(&self, x: usize, y: usize) -> bool {
+        return y > 0 && self.down_open[x + (y - 1) * self.width]
+    }
+    pub fn right(&self, x: usize, y: usize) -> bool {
+        return x < self.width - 1 && self.right_open[x + y * (self.width - 1)]
+    }
+}
+
+fn fence<'a, 'b, Gap: Fn(usize) -> &'a str, Post : Fn(usize) -> &'b str>(
+        low: usize, high: usize, end: &str, gap: Gap, post: Post) -> String {
+    let mut ret = String::new();
+    ret.push_str(&end);
+    for v in low..high {
+        ret.push_str(&gap(v));
+        if v != high - 1 {
+            ret.push_str(&post(v));
+        }
+    }
+    ret.push_str(&end);
+    ret.push_str("\n");
+    ret
 }
 
 impl fmt::Display for Maze {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn fence<End, Gap, Post>(f: &mut fmt::Formatter,
-                                 low: usize,
-                                 high: usize,
-                                 end: End,
-                                 gap: Gap,
-                                 post: Post) -> fmt::Result
-            where End : Fn(&mut fmt::Formatter) -> fmt::Result,
-                  Gap : Fn(&mut fmt::Formatter, usize) -> fmt::Result ,
-                 Post : Fn(&mut fmt::Formatter, usize) -> fmt::Result {
-            end(f);
-            for v in low..high - 1 {
-                gap(f, v);
-                post(f, v);
-            }
-            gap(f, high - 1);
-            end(f);
-            writeln!(f, "");
-            Ok(())
-        };
-        fence(f, 0, self.height,
-              |f| fence(f, 0, self.width,
-                        |f| write!(f, "+"),
-                        |f,_| write!(f, " "),
-                        |f,_| write!(f, "+")),
-              |f, y| fence(f, 0, self.width,
-                           |f| write!(f, "|"),
-                           |f, x| write!(f, " "),
-                           |f, x| {
-                               let r = self.right_open[x + y * (self.width - 1)];
-                               write!(f, "{}", if r { ' ' } else { '|' })
-                           }),
-              |f, y| fence(f, 0, self.width,
-                           |f| write!(f, "+"),
-                           |f, x| {
-                               let r = self.down_open[x + y * self.width];
-                               write!(f, "{}", if r { ' ' } else { '-' })
-                           },
-                           |f, x| write!(f, "+")));
-        writeln!(f, "");
-        Ok(())
+        let rwall = |x, y| if self.right(x, y) { " " } else { "|" };
+        let dwall = |x, y| if self.down(x, y) { " " } else { "-" };
+        let (w, h) = (self.width, self.height);
+        f.write_str(&fence(0, h,
+                           &fence(0, w, "+", |_| "-", |_| "+"),
+                           |y| &fence(0, w, "|", |_| " ", |x| rwall(x, y)),
+                           |y| &fence(0, w, "+", |x| dwall(x, y), |_| "+")))
     }
 }
 

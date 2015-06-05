@@ -1,5 +1,5 @@
 extern crate rand;
-mod search;
+use search::{Space, State, VisitTracker};
 use rand::Rng;
 use std::fmt;
 
@@ -20,7 +20,7 @@ pub struct Position {
 }
 
 impl Position {
-    fn new(x: usize, y: usize) -> Position {
+    pub fn new(x: usize, y: usize) -> Position {
         Position {
             x : x,
             y : y,
@@ -28,17 +28,29 @@ impl Position {
     }
 }
 
-impl search::State<Maze> for Position {
+impl State<Maze> for Position {
+    type VisitTracker = CellVisitTracker;
 }
 
-pub struct CellVisited {
+pub struct CellVisitTracker {
     visited: Vec<bool>,
     width: usize,
     height: usize
 }
 
-impl VisitTracker<Maze, Position> for CellVisited {
+impl VisitTracker<Maze, Position> for CellVisitTracker {
+    fn new(maze: &Maze) -> CellVisitTracker {
+        CellVisitTracker {
+            visited : vec![false; maze.width * maze.height],
+            width : maze.width,
+            height : maze.height,
+        }
+    }
+    fn visit(&mut self, state: &Position) {}
+    fn unvisit(&mut self, state: &Position) {}
+    fn is_visit(&self, state: &Position) -> bool { false }
 }
+
 impl Maze {
     pub fn new(width: usize, height: usize) -> Maze {
         Maze {

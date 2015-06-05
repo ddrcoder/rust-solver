@@ -1,15 +1,10 @@
+extern crate rand;
 mod maze;
-use std::thread;
-use maze::Maze;
-use std::io::stdin;
+mod search;
 
 fn main() {
-    let mut ig = String::new();
-    stdin().read_line(&mut ig);
-    let mut m = Maze::new(3, 3);
-    m.right_open[2] = true;
-    m.right_open[3] = true;
-    m.down_open[1] = true;
-    m.down_open[3] = true;
+    let m = maze::Maze::random(25, 25);
+    search::dfs_search(&m, maze::Position::new(0, 0), |&m, &p| 3.2);
     println!("Maze:\n{}", &m);
+
 }

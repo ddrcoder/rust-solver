@@ -1,5 +1,5 @@
 extern crate rand;
-use search::{Space, State, VisitTracker};
+use search::Graph;
 use rand::Rng;
 use std::fmt;
 
@@ -14,41 +14,16 @@ pub struct Maze {
     down_open: Vec<bool>,
 }
 
-pub struct Position {
-    x: usize,
-    y: usize,
-}
-
-impl Position {
-    pub fn new(x: usize, y: usize) -> Position {
-        Position {
-            x : x,
-            y : y,
-        }
+impl Graph for Maze {
+    type Node = (i32, i32);
+    fn neighbors(&self, &(x, y): &Self::Node) -> Vec<Self::Node> {
+        let mut neighbors = Vec::<Self::Node>::with_capacity(4);
+        neighbors
     }
-}
-
-impl State<Maze> for Position {
-    type VisitTracker = CellVisitTracker;
-}
-
-pub struct CellVisitTracker {
-    visited: Vec<bool>,
-    width: usize,
-    height: usize
-}
-
-impl VisitTracker<Maze, Position> for CellVisitTracker {
-    fn new(maze: &Maze) -> CellVisitTracker {
-        CellVisitTracker {
-            visited : vec![false; maze.width * maze.height],
-            width : maze.width,
-            height : maze.height,
-        }
+    fn distance(&self, &(x1, y1): &Self::Node, &(x2, y2): &Self::Node) -> f32 {
+        let (dx, dy) = (x1 - x2, y1 - y2);
+        ((dx * dx + dy * dy) as f32).sqrt()
     }
-    fn visit(&mut self, state: &Position) {}
-    fn unvisit(&mut self, state: &Position) {}
-    fn is_visit(&self, state: &Position) -> bool { false }
 }
 
 impl Maze {

@@ -27,7 +27,7 @@ impl Graph for Maze {
     }
     fn distance(&self, &(x1, y1): &Self::Node, &(x2, y2): &Self::Node) -> usize {
         fn dist(a: usize, b: usize) -> usize {
-            if a < b { b - a} else { a - b }
+            if a < b { b - a } else { a - b }
         }
         dist(x1, x2) + dist(y1, y2)
     }
@@ -53,32 +53,36 @@ impl Maze {
     }
 
     pub fn random(width: usize, height: usize) -> Maze{
-        fn fill(maze: &mut Maze, visited: &mut Vec<Vec<bool>>, x: usize, y: usize) -> bool {
-            let (w, h) = (maze.width, maze.height);
-            if x >= w || y >= h || visited[y][x] {
-                return false
-            }
-            maze.right_open[0] = true;
-            visited[y][x] = true;
-            let mut nexts = [(0, -1), (-1,  0), (1,  0), (0,  1)];
-            rand::thread_rng().shuffle(&mut nexts);
-            for &(dx, dy) in &nexts {
-                let (nx, ny) = ((x as i32 + dx) as usize, (y as i32 + dy) as usize);
-                if fill(maze, visited, nx, ny) {
-                    match (dx, dy) {
-                        (-1, 0) => maze.right_open[x - 1 + y * (w - 1)] = true,
-                        (1, 0) => maze.right_open[x + y * (w - 1)] = true,
-                        (0, -1) => maze.down_open[x + (y - 1) * w] = true,
-                        (0, 1) => maze.down_open[x + y * w] = true,
-                        (_, _) => panic!(),
-                    }
-                }
-            }
-            true
-        }
         let mut maze = Self::new(width, height);
         let mut visited = vec![vec![false; width]; height];
-        fill(&mut maze, &mut visited, 0, 0);
+        let mut stack = Vec::new();
+        stack.push((0i64, 0i64, 0i64, 0i64));
+        let mut nexts = [(0, -1), (-1,  0), (1,  0), (0,  1)];
+        while let Some((x, y, px, py)) = stack.pop() {
+            let visited = &mut visited[x as usize][y as usize];
+            if *visited {
+                continue
+            }
+            *visited = true;
+            if px != x || py != y {
+                let (dx, dy) = (x - px, y - py);
+                let (px, py) = (px as usize, py as usize);
+                match (dx, dy) {
+                    (-1, 0) => maze.right_open[px - 1 + py * (width - 1)] = true,
+                    (1, 0) => maze.right_open[px + py * (width - 1)] = true,
+                    (0, -1) => maze.down_open[px + (py - 1) * width] = true,
+                    (0, 1) => maze.down_open[px + py * width] = true,
+                    (_, _) => panic!(),
+                }
+            }
+            rand::thread_rng().shuffle(&mut nexts);
+            for &(dx, dy) in &nexts {
+                let (nx, ny) = (x + dx, y + dy);
+                if (nx as usize) < width && (ny as usize) < height {
+                    stack.push((nx, ny, x, y));
+                }
+            }
+        }
         maze
     }
 

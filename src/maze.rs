@@ -12,17 +12,24 @@ pub struct Maze {
     // (i, j) is open to (i, j + 1) iff downOpen[i + width * j]
     // (i, height - 1) is never open to out-of-bounds
     down_open: Vec<bool>,
+    marked: Vec<bool>,
 }
 
 impl Graph for Maze {
-    type Node = (i32, i32);
+    type Node = (usize, usize);
     fn neighbors(&self, &(x, y): &Self::Node) -> Vec<Self::Node> {
         let mut neighbors = Vec::<Self::Node>::with_capacity(4);
+        if x > 0 && self.left(x, y) { neighbors.push((x - 1, y)) }
+        if y > 0 && self.up(x, y) { neighbors.push((x, y - 1)) }
+        if x + 1 < self.width && self.right(x, y) { neighbors.push((x + 1, y)) }
+        if y + 1 < self.height && self.down(x, y) { neighbors.push((x, y + 1)) }
         neighbors
     }
-    fn distance(&self, &(x1, y1): &Self::Node, &(x2, y2): &Self::Node) -> f32 {
-        let (dx, dy) = (x1 - x2, y1 - y2);
-        ((dx * dx + dy * dy) as f32).sqrt()
+    fn distance(&self, &(x1, y1): &Self::Node, &(x2, y2): &Self::Node) -> usize {
+        fn dist(a: usize, b: usize) -> usize {
+            if a < b { b - a} else { a - b }
+        }
+        dist(x1, x2) + dist(y1, y2)
     }
 }
 
@@ -33,9 +40,17 @@ impl Maze {
             height: height,
             right_open: vec![false; (width - 1) * height],
             down_open: vec![false; width * (height - 1)],
+            marked: vec![false; width * height],
         }
     }
 
+    pub fn mark(&mut self, x: usize, y: usize) {
+        self.marked[y * self.width + x] = true;
+    }
+
+    pub fn is_marked(&self, x: usize, y: usize) -> bool {
+        self.marked[y * self.width + x]
+    }
 
     pub fn random(width: usize, height: usize) -> Maze{
         fn fill(maze: &mut Maze, visited: &mut Vec<Vec<bool>>, x: usize, y: usize) -> bool {
@@ -103,11 +118,12 @@ impl fmt::Display for Maze {
 
         let rwall = |x, y| if self.right(x, y) { " " } else { "|" };
         let dwall = |x, y| if self.down(x, y) { "  " } else { "--" };
+        let mark = |x, y| if self.is_marked(x, y) { "**" } else { "  " };
         let (w, h) = (self.width, self.height);
 
         f.write_str(&fence(0, h,
                            &fence(0, w, "+", |_| "--", |_| "+"),
-                           |y| &fence(0, w, "|", |_| "  ", |x| rwall(x, y)),
+                           |y| &fence(0, w, "|", |x| mark(x, y), |x| rwall(x, y)),
                            |y| &fence(0, w, "+", |x| dwall(x, y), |_| "+")))
     }
 }

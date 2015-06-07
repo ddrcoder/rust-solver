@@ -6,12 +6,13 @@ use std::cmp::{Eq, Ord, Ordering};
 use std::clone::Clone;
 
 pub trait Graph {
-    type Node : Clone+Hash+Eq+PartialEq;
+    type Node : Clone+Hash+Eq;
     fn neighbors(&self, n: &Self::Node) -> Vec<Self::Node>;
     fn distance(&self, n1: &Self::Node, n2: &Self::Node) -> usize;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
+/// Wrapper for holding objects in a priority queue, ordered by S
 struct QueueEntry<S:PartialOrd, T>(S, T);
 
 impl <S:PartialOrd, T> Eq for QueueEntry<S, T> {}
@@ -22,12 +23,10 @@ impl <S:PartialOrd, T> PartialEq for QueueEntry<S, T> {
 }
 impl <S:PartialOrd, T> PartialOrd for QueueEntry<S, T> {
     fn partial_cmp(&self, other: &QueueEntry<S, T>) -> Option<Ordering> {
-        // swapped
-
         other.0.partial_cmp(&self.0)
     }
 }
-impl <S:PartialOrd, T:Eq> Ord for QueueEntry<S, T> {
+impl <S:PartialOrd, T> Ord for QueueEntry<S, T> {
     fn cmp(&self, other: &QueueEntry<S, T>) -> Ordering {
         match other.0.partial_cmp(&self.0) { Some(r) => r, _ => panic!() }
     }
@@ -51,6 +50,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                  });
     let mut frontier = BinaryHeap::new();
     frontier.push(QueueEntry(start_cost_guess, start));
+    let mut enqueues = 1;
     while let Some(QueueEntry(_, ref current)) = frontier.pop() {
         if current == &goal {
             let mut path = vec![goal];
@@ -59,6 +59,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                 node = prev;
                 path.push(node.clone());
             }
+            println!("{} nodes enqueued.", enqueues);
             return path;
         }
         let prior_cost = {
@@ -72,13 +73,13 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
         for neighbor in graph.neighbors(current) {
             let new_prior_cost = prior_cost + graph.distance(current, &neighbor);
             let cost_guess = new_prior_cost + graph.distance(&neighbor, &goal);
-            // if unseen or cost_guess is better, update/insert and requeue
             let candidate_entry = State::<G::Node>{
                 visited: false,
                 prior: Some(current.clone()),
                 prior_cost: new_prior_cost,
                 cost_guess: cost_guess,
             };
+            // if unseen or cost_guess is better, update/insert and requeue
             let should_enqueue = match table.entry(neighbor.clone()) {
                 Occupied(mut occ) => {
                     let v = occ.get_mut();
@@ -95,10 +96,10 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                 }
             };
             if should_enqueue {
+                enqueues = enqueues + 1;
                 frontier.push(QueueEntry(cost_guess, neighbor));
             }
         }
     }
-    panic!()
-
+    panic!("No path found!")
 }

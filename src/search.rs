@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Vacant,Occupied};
+use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 use std::collections::binary_heap::BinaryHeap;
 use std::hash::Hash;
 use std::cmp::{Eq, Ord, Ordering};
@@ -32,7 +32,35 @@ impl <S:PartialOrd, T> Ord for QueueEntry<S, T> {
     }
 }
 
-pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec<G::Node> {
+pub fn dfs_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Option<Vec<G::Node>> {
+    let mut visited = HashSet::new();
+    fn dfs<G : Graph>(visited: &mut HashSet<G::Node>,
+                      graph: &G, current: G::Node, goal: &G::Node) -> Option<Vec<G::Node>> {
+        if current == *goal {
+            return Some(vec![current]);
+        }
+        visited.insert(current.clone());
+        for neighbor in graph.neighbors(&current) {
+            if !visited.contains(&neighbor) {
+                if let Some(mut path) = dfs(visited, graph, neighbor, goal) {
+                    path.push(current);
+                    return Some(path);
+                }
+            }
+        }
+        visited.remove(&current);
+        None
+    };
+    if let Some(mut path) = dfs(&mut visited, graph, start, &goal) {
+        path.reverse();
+        Some(path)
+    } else {
+        None
+    }
+}
+
+pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
+    -> Option<Vec<G::Node>> {
     struct State<Node> {
         visited: bool,
         prior: Option<Node>,
@@ -50,7 +78,6 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                  });
     let mut frontier = BinaryHeap::new();
     frontier.push(QueueEntry(start_cost_guess, start));
-    let mut enqueues = 1;
     while let Some(QueueEntry(_, ref current)) = frontier.pop() {
         if current == &goal {
             let mut path = vec![goal];
@@ -59,8 +86,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                 node = prev;
                 path.push(node.clone());
             }
-            println!("{} nodes enqueued.", enqueues);
-            return path;
+            return Some(path);
         }
         let prior_cost = {
             let entry = table.get_mut(current).unwrap();
@@ -81,8 +107,8 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
             };
             // if unseen or cost_guess is better, update/insert and requeue
             let should_enqueue = match table.entry(neighbor.clone()) {
-                Occupied(mut occ) => {
-                    let v = occ.get_mut();
+                Occupied(occ) => {
+                    let v = occ.into_mut();
                     if v.cost_guess > cost_guess {
                         *v = candidate_entry;
                         true
@@ -96,10 +122,9 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Vec
                 }
             };
             if should_enqueue {
-                enqueues = enqueues + 1;
                 frontier.push(QueueEntry(cost_guess, neighbor));
             }
         }
     }
-    panic!("No path found!")
+    None
 }

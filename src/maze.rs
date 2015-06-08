@@ -17,6 +17,7 @@ pub struct Maze {
 
 impl Graph for Maze {
     type Node = (usize, usize);
+
     fn neighbors(&self, &(x, y): &Self::Node) -> Vec<Self::Node> {
         let mut neighbors = Vec::<Self::Node>::with_capacity(4);
         if x > 0 && self.left(x, y) { neighbors.push((x - 1, y)) }
@@ -25,11 +26,17 @@ impl Graph for Maze {
         if y + 1 < self.height && self.down(x, y) { neighbors.push((x, y + 1)) }
         neighbors
     }
+
     fn distance(&self, &(x1, y1): &Self::Node, &(x2, y2): &Self::Node) -> usize {
         fn dist(a: usize, b: usize) -> usize {
             if a < b { b - a } else { a - b }
         }
-        dist(x1, x2) + dist(y1, y2)
+        let d = dist(x1, x2) + dist(y1, y2);
+        if d < 2 {
+            d * 1000
+        } else {
+            d * 1001
+        }
     }
 }
 
@@ -48,6 +55,8 @@ impl Maze {
         self.marked[y * self.width + x] = true;
     }
 
+    pub fn width(&self) -> usize { self.width }
+    pub fn height(&self) -> usize { self.height }
     pub fn is_marked(&self, x: usize, y: usize) -> bool {
         self.marked[y * self.width + x]
     }

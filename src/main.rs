@@ -39,11 +39,7 @@ fn main() {
         "snake" => {
         },
         "maze" => {
-            let mut m = if let Some(input_file) = input {
-                Maze::load(&input_file).unwrap()
-            } else {
-                Maze::random(10, 10)
-            };
+            let mut m = Maze::random(17, 17);
             let (w, h) = m.dims();
             for (x, y) in search::a_star_search(&m, (0, 0), (w - 1, h - 1)).unwrap() {
                 m.mark(x, y);
@@ -51,9 +47,10 @@ fn main() {
             println!("Maze:\n{}", &m);
         },
         "maze2" => {
-            let mut m = Maze2::random(10, 10);
+            let mut m = Maze2::random(121, 53);
             let (w, h) = m.dims();
-            for (x, y) in search::a_star_search(&m, (0, 0), (w - 1, h - 1)).unwrap() {
+            println!("Maze:\n{}", &m);
+            for (x, y) in search::a_star_search(&m, (1, 1), (w - 2, h - 2)).unwrap() {
                 m.mark(x, y);
             }
             println!("Maze:\n{}", &m);

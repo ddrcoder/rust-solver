@@ -4,7 +4,7 @@ use rand::Rng;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::io::{BufRead,BufReader};
+use std::io::{BufRead, BufReader};
 
 pub struct Maze {
     width: usize,
@@ -88,47 +88,12 @@ impl Maze {
         maze
     }
 
-    pub fn load(input: &str) -> Result<Maze, io::Error> {
-        let mut fin = io::BufReader::new(try!(fs::File::open(input)));
-        let mut line = String::new();
-        fin.read_line(&mut line);
-        let mut right_open = vec![];
-        let mut down_open = vec![];
-        let width = line.len() / 2 - 1;
-        let mut height = 0;
-        /*
-        loop {
-            if fin.read_line(&mut line).is_err() { break; }
-            assert!(line.len() == width * 2 + 2);
-            for open in line.chars().kip(2).step_by(2).map(|ch|ch == ' ') {
-                right_open.push(open);
-            }
-            if fin.read_line(&mut line).is_err() { break; }
-            assert!(line.len() == width * 2 + 2);
-            for open in line.chars().skip(1).step_by(2).map(|ch|ch == ' ') {
-                down_open.push(open);
-            }
-            height = height + 1;
-        }
-        */
-        down_open.truncate(width * (height - 1));
-        Ok(Maze {
-            width: width,
-            height: height,
-            right_open: right_open,
-            down_open: down_open,
-            marked: vec![false; width * height],
-        })
-    }
-
     pub fn dims(&self) -> (usize, usize) { (self.width, self.height) }
 
     pub fn mark(&mut self, x: usize, y: usize) {
         self.marked[y * self.width + x] = true;
     }
 
-    pub fn width(&self) -> usize { self.width }
-    pub fn height(&self) -> usize { self.height }
     pub fn is_marked(&self, x: usize, y: usize) -> bool {
         self.marked[y * self.width + x]
     }

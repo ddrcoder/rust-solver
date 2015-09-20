@@ -6,14 +6,14 @@ use std::cmp::{Eq, Ord, Ordering};
 use std::clone::Clone;
 
 pub trait Graph {
-    type Node : Clone+Hash+Eq;
+    type Node: Clone + Hash + Eq;
     fn neighbors(&self, n: &Self::Node) -> Vec<Self::Node>;
     fn distance(&self, n1: &Self::Node, n2: &Self::Node) -> usize;
 }
 
 #[derive(Clone)]
 /// Wrapper for holding objects in a priority queue, ordered by S
-struct QueueEntry<S:PartialOrd, T>(S, T);
+struct QueueEntry<S: PartialOrd, T>(S, T);
 
 impl <S:PartialOrd, T> Eq for QueueEntry<S, T> {}
 impl <S:PartialOrd, T> PartialEq for QueueEntry<S, T> {

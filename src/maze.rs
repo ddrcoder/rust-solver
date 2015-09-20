@@ -2,6 +2,9 @@ extern crate rand;
 use search::Graph;
 use rand::Rng;
 use std::fmt;
+use std::fs;
+use std::io;
+use std::io::{BufRead,BufReader};
 
 pub struct Maze {
     width: usize,
@@ -51,17 +54,7 @@ impl Maze {
         }
     }
 
-    pub fn mark(&mut self, x: usize, y: usize) {
-        self.marked[y * self.width + x] = true;
-    }
-
-    pub fn width(&self) -> usize { self.width }
-    pub fn height(&self) -> usize { self.height }
-    pub fn is_marked(&self, x: usize, y: usize) -> bool {
-        self.marked[y * self.width + x]
-    }
-
-    pub fn random(width: usize, height: usize) -> Maze{
+    pub fn random(width: usize, height: usize) -> Maze {
         let mut maze = Self::new(width, height);
         let mut visited = vec![vec![false; width]; height];
         let mut stack = Vec::new();
@@ -95,6 +88,51 @@ impl Maze {
         maze
     }
 
+    pub fn load(input: &str) -> Result<Maze, io::Error> {
+        let mut fin = io::BufReader::new(try!(fs::File::open(input)));
+        let mut line = String::new();
+        fin.read_line(&mut line);
+        let mut right_open = vec![];
+        let mut down_open = vec![];
+        let width = line.len() / 2 - 1;
+        let mut height = 0;
+        /*
+        loop {
+            if fin.read_line(&mut line).is_err() { break; }
+            assert!(line.len() == width * 2 + 2);
+            for open in line.chars().kip(2).step_by(2).map(|ch|ch == ' ') {
+                right_open.push(open);
+            }
+            if fin.read_line(&mut line).is_err() { break; }
+            assert!(line.len() == width * 2 + 2);
+            for open in line.chars().skip(1).step_by(2).map(|ch|ch == ' ') {
+                down_open.push(open);
+            }
+            height = height + 1;
+        }
+        */
+        down_open.truncate(width * (height - 1));
+        Ok(Maze {
+            width: width,
+            height: height,
+            right_open: right_open,
+            down_open: down_open,
+            marked: vec![false; width * height],
+        })
+    }
+
+    pub fn dims(&self) -> (usize, usize) { (self.width, self.height) }
+
+    pub fn mark(&mut self, x: usize, y: usize) {
+        self.marked[y * self.width + x] = true;
+    }
+
+    pub fn width(&self) -> usize { self.width }
+    pub fn height(&self) -> usize { self.height }
+    pub fn is_marked(&self, x: usize, y: usize) -> bool {
+        self.marked[y * self.width + x]
+    }
+
     pub fn left(&self, x: usize, y: usize) -> bool {
         return x > 0 && self.right_open[x - 1 + y * (self.width - 1)]
     }
@@ -114,7 +152,7 @@ impl Maze {
 
 impl fmt::Display for Maze {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn fence<'a, 'b, Gap: Fn(usize) -> &'a str, Post : Fn(usize) -> &'b str>(
+        fn fence<'a, 'b, Gap: Fn(usize) -> String, Post : Fn(usize) -> String>(
                 low: usize, high: usize, end: &str, gap: Gap, post: Post) -> String {
             let mut ret = String::new();
             ret.push_str(&end);
@@ -129,14 +167,14 @@ impl fmt::Display for Maze {
             ret
         }
 
-        let rwall = |x, y| if self.right(x, y) { " " } else { "|" };
-        let dwall = |x, y| if self.down(x, y) { "  " } else { "--" };
-        let mark = |x, y| if self.is_marked(x, y) { "**" } else { "  " };
+        let rwall = |x, y| if self.right(x, y) { " " } else { "|" }.to_string();
+        let dwall = |x, y| if self.down(x, y) { "  " } else { "--" }.to_string();
+        let mark = |x, y| if self.is_marked(x, y) { "**" } else { "  " }.to_string();
         let (w, h) = (self.width, self.height);
 
         f.write_str(&fence(0, h,
-                           &fence(0, w, "+", |_| "--", |_| "+"),
-                           |y| &fence(0, w, "|", |x| mark(x, y), |x| rwall(x, y)),
-                           |y| &fence(0, w, "+", |x| dwall(x, y), |_| "+")))
+                           &fence(0, w, "+", |_| "--".to_string(), |_| "+".to_string()),
+                           |y| fence(0, w, "|", |x| mark(x, y), |x| rwall(x, y)),
+                           |y| fence(0, w, "+", |x| dwall(x, y), |_| "+".to_string())))
     }
 }

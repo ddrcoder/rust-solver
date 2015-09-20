@@ -1,40 +1,14 @@
-#![feature(test)]
+extern crate getopts;
 extern crate rand;
-extern crate test;
 mod maze;
+mod maze2;
 mod search;
-use rand::{thread_rng, Rng};
-use test::Bencher;
-use std::io::Write;
- 
-fn test_data() -> Vec<maze::Maze> {
-    let n = 1;
-    let (w, h) = (400, 400);
-    (0..n).map(|n| maze::Maze::random(w, h)).collect::<Vec<maze::Maze>>()
-}
+use getopts::{Options,HasArg,Occur};
+use maze::Maze;
+use maze2::Maze2;
+use std::env;
 
-#[bench]
-fn a_star(b: &mut Bencher) {
-    let mazes = test_data();
-    b.iter(|| {
-        let maze = rand::thread_rng().choose(&mazes).unwrap();
-        search::a_star_search(maze, (0, 0), (maze.width() - 1, maze.height() - 1));
-        print!("A");
-        std::io::stdout().flush();
-    });
-}
- 
-#[bench]
-fn dfs(b: &mut Bencher) {
-    let mazes = test_data();
-    b.iter(|| {
-        let maze = rand::thread_rng().choose(&mazes).unwrap();
-        search::a_star_search(maze, (0, 0), (maze.width() - 1, maze.height() - 1));
-        print!("D");
-        std::io::stdout().flush();
-    });
-}
- 
+/*
 fn main() {
     let (w, h) = (10, 10);
     let mut m = maze::Maze::random(w, h);
@@ -42,4 +16,43 @@ fn main() {
         m.mark(x, y);
     }
     println!("Maze:\n{}", &m);
+}
+*/
+
+fn main() {
+    let mut opts = Options::new();
+    let brief = "Solves puzzles.";
+
+    opts.opt("i", "input", "Input puzzle.",
+             "INPUT", HasArg::Yes, Occur::Optional);
+    opts.opt("t", "type", "Puzzle type. Either 'snake' or 'maze'.",
+             "TYPE", HasArg::Yes, Occur::Req);
+    let m = match opts.parse(env::args()) {
+        Ok(m) => { m }
+        Err(f) => {
+            println!("{}\n\n{}", opts.usage(brief), f);
+            return;
+        }
+    };
+    let input = m.opt_str("input");
+    match m.opt_str("type").unwrap().as_ref() {
+        "snake" => {
+        },
+        "maze" => {
+            let mut m = if let Some(input_file) = input {
+                Maze::load(&input_file).unwrap()
+            } else {
+                Maze::random(10, 10)
+            };
+            let (w, h) = m.dims();
+            for (x, y) in search::a_star_search(&m, (0, 0), (w - 1, h - 1)).unwrap() {
+                m.mark(x, y);
+            }
+            println!("Maze:\n{}", &m);
+        },
+        other => {
+            println!("{}\n\nUnexpected puzzle type: '{}'\n", opts.usage(brief), other);
+            return;
+        }
+    };
 }

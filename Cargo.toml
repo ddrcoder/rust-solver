@@ -5,3 +5,4 @@ authors = ["Tom Jackson <tjackson@fb.com>"]
 
 [dependencies]
 rand = "0.3.0"
+getopts = "0.2"

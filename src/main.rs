@@ -50,6 +50,14 @@ fn main() {
             }
             println!("Maze:\n{}", &m);
         },
+        "maze2" => {
+            let mut m = Maze2::random(10, 10);
+            let (w, h) = m.dims();
+            for (x, y) in search::a_star_search(&m, (0, 0), (w - 1, h - 1)).unwrap() {
+                m.mark(x, y);
+            }
+            println!("Maze:\n{}", &m);
+        },
         other => {
             println!("{}\n\nUnexpected puzzle type: '{}'\n", opts.usage(brief), other);
             return;

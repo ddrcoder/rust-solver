@@ -73,7 +73,7 @@ impl Maze2 {
         let mut maze = Self::new(width, height);
         let mut visited = vec![vec![false; width]; height];
         let mut stack = Vec::new();
-        stack.push((1usize, 1usize, 1usize, 1usize));
+        stack.push((1, 1, 1, 1));
         let mut dirs = [(0, -1), (-1,  0), (1,  0), (0,  1)];
         while let Some((x, y, mx, my)) = stack.pop() {
             if maze.is_open(x, y) {

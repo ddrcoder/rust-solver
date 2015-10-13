@@ -1,12 +1,14 @@
 extern crate getopts;
 extern crate rand;
 mod maze;
-mod maze2;
 mod search;
+mod stored;
 use getopts::{Options,HasArg,Occur};
 use maze::Maze;
-use maze2::Maze2;
 use std::env;
+use std::fs::File;
+use std::io::BufReader;
+use stored::Stored;
 
 /*
 fn main() {
@@ -39,21 +41,22 @@ fn main() {
         "snake" => {
         },
         "maze" => {
-            let mut m = Maze::random(17, 17);
-            let (w, h) = m.dims();
-            for (x, y) in search::a_star_search(&m, (0, 0), (w - 1, h - 1)).unwrap() {
-                m.mark(x, y);
-            }
-            println!("Maze:\n{}", &m);
-        },
-        "maze2" => {
-            let mut m = Maze2::random(121, 53);
+            let dims = (201, 201);
+            let mut m = if let Some(file) = input {
+                    Maze::load(&mut BufReader::new(&mut File::open(file).ok().unwrap()))
+                } else {
+                    Maze::random(dims.0, dims.1)
+                };
             let (w, h) = m.dims();
             println!("Maze:\n{}", &m);
-            for (x, y) in search::a_star_search(&m, (1, 1), (w - 2, h - 2)).unwrap() {
-                m.mark(x, y);
+            if let Some(solution) = search::a_star_search(&m, (1, 1), (w - 2, h - 2)) {
+                for (x, y) in solution {
+                    m.mark(x, y);
+                }
+                println!("Maze:\n{}", &m);
+            } else {
+                println!("No solution!\n");
             }
-            println!("Maze:\n{}", &m);
         },
         other => {
             println!("{}\n\nUnexpected puzzle type: '{}'\n", opts.usage(brief), other);

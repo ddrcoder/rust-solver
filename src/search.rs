@@ -15,27 +15,33 @@ pub trait Graph {
 /// Wrapper for holding objects in a priority queue, ordered by S
 struct QueueEntry<S: PartialOrd, T>(S, T);
 
-impl <S:PartialOrd, T> Eq for QueueEntry<S, T> {}
-impl <S:PartialOrd, T> PartialEq for QueueEntry<S, T> {
+impl<S: PartialOrd, T> Eq for QueueEntry<S, T> {}
+impl<S: PartialOrd, T> PartialEq for QueueEntry<S, T> {
     fn eq(&self, other: &QueueEntry<S, T>) -> bool {
         self.0.eq(&other.0)
     }
 }
-impl <S:PartialOrd, T> PartialOrd for QueueEntry<S, T> {
+impl<S: PartialOrd, T> PartialOrd for QueueEntry<S, T> {
     fn partial_cmp(&self, other: &QueueEntry<S, T>) -> Option<Ordering> {
         other.0.partial_cmp(&self.0)
     }
 }
-impl <S:PartialOrd, T> Ord for QueueEntry<S, T> {
+impl<S: PartialOrd, T> Ord for QueueEntry<S, T> {
     fn cmp(&self, other: &QueueEntry<S, T>) -> Ordering {
-        match other.0.partial_cmp(&self.0) { Some(r) => r, _ => panic!() }
+        match other.0.partial_cmp(&self.0) {
+            Some(r) => r,
+            _ => panic!(),
+        }
     }
 }
 
-pub fn dfs_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Option<Vec<G::Node>> {
+pub fn dfs_search<G: Graph>(graph: &G, start: G::Node, goal: G::Node) -> Option<Vec<G::Node>> {
     let mut visited = HashSet::new();
-    fn dfs<G : Graph>(visited: &mut HashSet<G::Node>,
-                      graph: &G, current: G::Node, goal: &G::Node) -> Option<Vec<G::Node>> {
+    fn dfs<G: Graph>(visited: &mut HashSet<G::Node>,
+                     graph: &G,
+                     current: G::Node,
+                     goal: &G::Node)
+                     -> Option<Vec<G::Node>> {
         if current == *goal {
             return Some(vec![current]);
         }
@@ -59,8 +65,7 @@ pub fn dfs_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node) -> Option
     }
 }
 
-pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
-    -> Option<Vec<G::Node>> {
+pub fn a_star_search<G: Graph>(graph: &G, start: G::Node, goal: G::Node) -> Option<Vec<G::Node>> {
     struct State<Node> {
         visited: bool,
         prior: Option<Node>,
@@ -70,7 +75,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
     let mut table = HashMap::new();
     let start_cost_guess = graph.distance(&start, &goal);
     table.insert(start.clone(),
-                 State::<G::Node>{
+                 State::<G::Node> {
                      visited: false,
                      prior: None,
                      prior_cost: 0,
@@ -91,7 +96,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
         let prior_cost = {
             let entry = table.get_mut(current).unwrap();
             if entry.visited {
-                continue
+                continue;
             }
             entry.visited = true;
             entry.prior_cost
@@ -99,7 +104,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
         for neighbor in graph.neighbors(current) {
             let new_prior_cost = prior_cost + graph.distance(current, &neighbor);
             let cost_guess = new_prior_cost + graph.distance(&neighbor, &goal);
-            let candidate_entry = State::<G::Node>{
+            let candidate_entry = State::<G::Node> {
                 visited: false,
                 prior: Some(current.clone()),
                 prior_cost: new_prior_cost,
@@ -115,7 +120,7 @@ pub fn a_star_search<G : Graph>(graph: &G, start: G::Node, goal: G::Node)
                     } else {
                         false
                     }
-                },
+                }
                 Vacant(vac) => {
                     vac.insert(candidate_entry);
                     true

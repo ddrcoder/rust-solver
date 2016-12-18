@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Tom Jackson <tjackson@fb.com>"]
 
 [dependencies]
-rand = "0.3.0"
-getopts = "0.2"
+rand = "0.3.15"
+getopts = "0.2.14"
+n_array = "0.1.3"

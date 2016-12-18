@@ -3,14 +3,15 @@ use rand::Rng;
 use search::Graph;
 use std::fmt;
 use std::io::BufRead;
-// use std::str::FromStr;
 use stored::Stored;
+
 
 pub struct Maze {
     width: usize,
     height: usize,
     open: Vec<bool>,
     marked: Vec<bool>,
+    start: (usize, usize),
 }
 
 impl Stored for Maze {
@@ -23,8 +24,16 @@ impl Stored for Maze {
         let mut maze = Maze::new(w, h);
         for (line, y) in lines.iter().zip(0..h) {
             for (ch, x) in line.chars().zip(0..w) {
-                if ch == ' ' {
-                    maze.set_open(x, y)
+                match ch {
+                    ' ' => {
+                        maze.set_open(x, y);
+                    }
+                    '@' => {
+                        maze.start = (x, y);
+                    }
+                    _ => {
+                        panic!("Unexpected char: '{}'", ch);
+                    }
                 }
             }
         }
@@ -35,6 +44,10 @@ impl Stored for Maze {
 impl Graph for Maze {
     type Node = (usize, usize);
 
+    fn start(&self) -> (usize, usize) {
+        self.start
+    }
+
     fn neighbors(&self, &(x, y): &(usize, usize)) -> Vec<(usize, usize)> {
         self.adjacents(x, y)
             .into_iter()
@@ -44,18 +57,10 @@ impl Graph for Maze {
 
     fn distance(&self, &(x1, y1): &(usize, usize), &(x2, y2): &(usize, usize)) -> usize {
         fn dist(a: usize, b: usize) -> usize {
-            if a < b {
-                b - a
-            } else {
-                a - b
-            }
+            if a < b { b - a } else { a - b }
         }
         let d = dist(x1, x2) + dist(y1, y2);
-        if d < 2 {
-            d * 1000
-        } else {
-            d * 1001
-        }
+        if d < 2 { d * 1000 } else { d * 1001 }
     }
 }
 
@@ -68,6 +73,7 @@ impl Maze {
             height: height,
             open: vec![false; width * height],
             marked: vec![false; width * height],
+            start: (1, 1),
         }
     }
 
@@ -117,6 +123,7 @@ impl Maze {
                maze.is_open(x + x - px, y + y - py) {
                 continue;
             }
+            // if we're about to destroy a pillar, don't
             if x % 2 == 0 && y % 2 == 0 {
                 continue;
             }

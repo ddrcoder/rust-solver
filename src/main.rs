@@ -1,6 +1,8 @@
 extern crate getopts;
+extern crate n_array;
 extern crate rand;
 mod maze;
+mod snake;
 mod search;
 mod stored;
 use getopts::{Options, HasArg, Occur};
@@ -28,7 +30,7 @@ fn maze(input: Option<String>) {
     };
     let (w, h) = m.dims();
     println!("Maze:\n{}", &m);
-    if let Some(solution) = search::a_star_search(&m, (1, 1), (w - 2, h - 2)) {
+    if let Some(solution) = search::a_star_search(&m, (w - 2, h - 2)) {
         for (x, y) in solution {
             m.mark(x, y);
         }
@@ -36,6 +38,25 @@ fn maze(input: Option<String>) {
     } else {
         println!("No solution!\n");
     }
+}
+
+fn snake(input: Option<String>) {
+    let mut m = if let Some(file) = input {
+        snake::Level::load(&mut BufReader::new(&mut File::open(file).ok().unwrap()))
+    } else {
+        panic!("Snakes need levels");
+    };
+    /*
+    let (w, h) = m.dims();
+    println!("Maze:\n{}", &m);
+    if let Some(solution) = search::a_star_search(&m, (1, 1), (w - 2, h - 2)) {
+        for (x, y) in solution {
+            m.mark(x, y);
+        }
+        println!("Maze:\n{}", &m);
+    } else {
+        println!("No solution!\n");
+    }*/
 }
 
 fn main() {
@@ -68,6 +89,9 @@ fn main() {
                 // "snake" => {        },
                 "maze" => {
                     maze(input);
+                }
+                "snake" => {
+                    snake(input);
                 }
                 other => {
                     println!("{}\n\nUnexpected puzzle type: '{}'\n",

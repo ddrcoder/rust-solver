@@ -25,12 +25,8 @@ impl Stored for Maze {
         for (line, y) in lines.iter().zip(0..h) {
             for (ch, x) in line.chars().zip(0..w) {
                 let open = match ch {
-                    ' ' => {
-                        true
-                    }
-                    '#' => {
-                        false
-                    },
+                    ' ' => true,
+                    '#' => false,
                     '@' => {
                         maze.start = (x, y);
                         true

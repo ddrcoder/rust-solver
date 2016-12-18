@@ -62,8 +62,10 @@ pub fn dfs_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
     };
     if let Some(mut path) = dfs(&mut visited, graph, graph.start(), &goal) {
         path.reverse();
+        println!("States visited: {}", visited.len());
         Some(path)
     } else {
+        println!("States visited: {}", visited.len());
         None
     }
 }
@@ -77,7 +79,7 @@ pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
     };
     let mut table = HashMap::new();
     let start = graph.start();
-        let goal = graph.goal();
+    let goal = graph.goal();
     let start_cost_guess = graph.distance(&start, &goal);
     table.insert(start.clone(),
                  State::<G::Node> {
@@ -96,6 +98,7 @@ pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
                 node = prev;
                 path.push(node.clone());
             }
+            path.reverse();
             return Some(path);
         }
         let prior_cost = {
@@ -136,5 +139,6 @@ pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
             }
         }
     }
+    println!("States visited: {}", table.len());
     None
 }

@@ -22,14 +22,12 @@ use stored::Stored;
 // }
 //
 fn maze(input: Option<String>) {
-    let dims = (201, 201);
     let mut m = if let Some(file) = input {
         Maze::load(&mut BufReader::new(&mut File::open(file).ok().unwrap()))
     } else {
-        Maze::random(dims.0, dims.1)
+        Maze::random(40, 40)
     };
     let (w, h) = m.dims();
-    println!("Maze:\n{}", &m);
     if let Some(solution) = search::a_star_search(&m) {
         for (x, y) in solution {
             m.mark(x, y);
@@ -46,17 +44,27 @@ fn snake(input: Option<String>) {
     } else {
         panic!("Snakes need levels");
     };
-    /*
-    let (w, h) = m.dims();
-    println!("Maze:\n{}", &m);
-    if let Some(solution) = search::a_star_search(&m, (1, 1), (w - 2, h - 2)) {
-        for (x, y) in solution {
-            m.mark(x, y);
+    println!("Level:\n{}", &m);
+    if let Some(solution) = search::a_star_search(&m) {
+        let mut i = 0;
+        for (a, b) in solution.iter().zip(solution.iter().skip(1)) {
+            let ((ax, ay), (bx, by)) = (a.head(&m), b.head(&m));
+            let direction = if ax != bx {
+                if bx < ax { '<' } else { '>' }
+            } else {
+                if by < ay { '^' } else { 'v' }
+            };
+            print!("{}", direction);
+            i += 1;
+            if i % 4 == 0 {
+                println!("");
+            }
         }
         println!("Maze:\n{}", &m);
     } else {
         println!("No solution!\n");
-    }*/
+    }
+    //
 }
 
 fn main() {

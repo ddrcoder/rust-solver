@@ -5,13 +5,13 @@ use std::fmt;
 use std::io::BufRead;
 use stored::Stored;
 
-
 pub struct Maze {
     width: usize,
     height: usize,
     open: Vec<bool>,
     marked: Vec<bool>,
     start: (usize, usize),
+    goal: (usize, usize),
 }
 
 impl Stored for Maze {
@@ -24,16 +24,27 @@ impl Stored for Maze {
         let mut maze = Maze::new(w, h);
         for (line, y) in lines.iter().zip(0..h) {
             for (ch, x) in line.chars().zip(0..w) {
-                match ch {
+                let open = match ch {
                     ' ' => {
-                        maze.set_open(x, y);
+                        true
                     }
+                    '#' => {
+                        false
+                    },
                     '@' => {
                         maze.start = (x, y);
+                        true
+                    }
+                    'X' => {
+                        maze.goal = (x, y);
+                        true
                     }
                     _ => {
                         panic!("Unexpected char: '{}'", ch);
                     }
+                };
+                if open {
+                    maze.set_open(x, y);
                 }
             }
         }
@@ -46,6 +57,10 @@ impl Graph for Maze {
 
     fn start(&self) -> (usize, usize) {
         self.start
+    }
+
+    fn goal(&self) -> (usize, usize) {
+        self.goal
     }
 
     fn neighbors(&self, &(x, y): &(usize, usize)) -> Vec<(usize, usize)> {
@@ -74,6 +89,7 @@ impl Maze {
             open: vec![false; width * height],
             marked: vec![false; width * height],
             start: (1, 1),
+            goal: (width - 2, height - 2),
         }
     }
 

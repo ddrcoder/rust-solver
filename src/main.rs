@@ -30,7 +30,7 @@ fn maze(input: Option<String>) {
     };
     let (w, h) = m.dims();
     println!("Maze:\n{}", &m);
-    if let Some(solution) = search::a_star_search(&m, (w - 2, h - 2)) {
+    if let Some(solution) = search::a_star_search(&m) {
         for (x, y) in solution {
             m.mark(x, y);
         }

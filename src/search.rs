@@ -8,6 +8,7 @@ use std::clone::Clone;
 pub trait Graph {
     type Node: Clone + Hash + Eq;
     fn start(&self) -> Self::Node;
+    fn goal(&self) -> Self::Node;
     fn neighbors(&self, n: &Self::Node) -> Vec<Self::Node>;
     fn distance(&self, n1: &Self::Node, n2: &Self::Node) -> usize;
 }
@@ -36,8 +37,9 @@ impl<S: PartialOrd, T> Ord for QueueEntry<S, T> {
     }
 }
 
-pub fn dfs_search<G: Graph>(graph: &G, goal: G::Node) -> Option<Vec<G::Node>> {
+pub fn dfs_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
     let mut visited = HashSet::new();
+    let goal = graph.goal();
     fn dfs<G: Graph>(visited: &mut HashSet<G::Node>,
                      graph: &G,
                      current: G::Node,
@@ -66,7 +68,7 @@ pub fn dfs_search<G: Graph>(graph: &G, goal: G::Node) -> Option<Vec<G::Node>> {
     }
 }
 
-pub fn a_star_search<G: Graph>(graph: &G, goal: G::Node) -> Option<Vec<G::Node>> {
+pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
     struct State<Node> {
         visited: bool,
         prior: Option<Node>,
@@ -75,6 +77,7 @@ pub fn a_star_search<G: Graph>(graph: &G, goal: G::Node) -> Option<Vec<G::Node>>
     };
     let mut table = HashMap::new();
     let start = graph.start();
+        let goal = graph.goal();
     let start_cost_guess = graph.distance(&start, &goal);
     table.insert(start.clone(),
                  State::<G::Node> {

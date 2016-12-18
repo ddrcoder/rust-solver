@@ -4,12 +4,15 @@ use std::collections::binary_heap::BinaryHeap;
 use std::hash::Hash;
 use std::cmp::{Eq, Ord, Ordering};
 use std::clone::Clone;
+use std::fmt;
 
 pub trait Graph {
     type Node: Clone + Hash + Eq;
+    type Edge: fmt::Display + Clone;
+    fn null_edge() -> Self::Edge;
     fn start(&self) -> Self::Node;
     fn goal(&self) -> Self::Node;
-    fn neighbors(&self, n: &Self::Node) -> Vec<Self::Node>;
+    fn neighbors(&self, n: &Self::Node) -> Vec<(Self::Edge, Self::Node)>;
     fn distance(&self, n1: &Self::Node, n2: &Self::Node) -> usize;
 }
 
@@ -37,22 +40,25 @@ impl<S: PartialOrd, T> Ord for QueueEntry<S, T> {
     }
 }
 
-pub fn dfs_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
+pub fn dfs_search<G: Graph>(graph: &G) -> Option<Vec<(G::Edge, G::Node)>> {
     let mut visited = HashSet::new();
     let goal = graph.goal();
+    let mut visits = 0;
     fn dfs<G: Graph>(visited: &mut HashSet<G::Node>,
+                     visits: &mut usize,
                      graph: &G,
                      current: G::Node,
                      goal: &G::Node)
-                     -> Option<Vec<G::Node>> {
+                     -> Option<Vec<(G::Edge, G::Node)>> {
         if current == *goal {
-            return Some(vec![current]);
+            return Some(vec![]);
         }
         visited.insert(current.clone());
-        for neighbor in graph.neighbors(&current) {
+        *visits += 1;
+        for (edge, neighbor) in graph.neighbors(&current) {
             if !visited.contains(&neighbor) {
-                if let Some(mut path) = dfs(visited, graph, neighbor, goal) {
-                    path.push(current);
+                if let Some(mut path) = dfs(visited, visits, graph, neighbor.clone(), goal) {
+                    path.push((edge, neighbor));
                     return Some(path);
                 }
             }
@@ -60,45 +66,54 @@ pub fn dfs_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
         visited.remove(&current);
         None
     };
-    if let Some(mut path) = dfs(&mut visited, graph, graph.start(), &goal) {
+    let result = dfs(&mut visited, &mut visits, graph, graph.start(), &goal);
+    println!("States visited: {}", visits);
+    if let Some(mut path) = result {
         path.reverse();
-        println!("States visited: {}", visited.len());
         Some(path)
     } else {
-        println!("States visited: {}", visited.len());
         None
     }
 }
 
-pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
-    struct State<Node> {
+pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<(G::Edge, G::Node)>> {
+    struct State<G: Graph> {
         visited: bool,
-        prior: Option<Node>,
+        prior: Option<G::Node>,
         prior_cost: usize,
         cost_guess: usize,
+        dir: G::Edge,
     };
     let mut table = HashMap::new();
     let start = graph.start();
     let goal = graph.goal();
     let start_cost_guess = graph.distance(&start, &goal);
     table.insert(start.clone(),
-                 State::<G::Node> {
+                 State::<G> {
                      visited: false,
                      prior: None,
                      prior_cost: 0,
                      cost_guess: start_cost_guess,
+                     dir: G::null_edge(),
                  });
     let mut frontier = BinaryHeap::new();
     frontier.push(QueueEntry(start_cost_guess, start));
     while let Some(QueueEntry(_, ref current)) = frontier.pop() {
         if current == &goal {
-            let mut path = vec![goal];
+            let mut path = vec![];
             let mut node = current;
-            while let &Some(ref prev) = &table.get(node).unwrap().prior {
-                node = prev;
-                path.push(node.clone());
+            loop {
+                let entry = table.get(node).unwrap();
+                path.push((entry.dir.clone(), current.clone()));
+                if let &Some(ref next) = &entry.prior {
+                    node = next;
+                } else {
+                    break;
+                }
             }
+            path.pop();
             path.reverse();
+            println!("States visited: {}", table.len());
             return Some(path);
         }
         let prior_cost = {
@@ -109,14 +124,15 @@ pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<G::Node>> {
             entry.visited = true;
             entry.prior_cost
         };
-        for neighbor in graph.neighbors(current) {
+        for (dir, neighbor) in graph.neighbors(current) {
             let new_prior_cost = prior_cost + graph.distance(current, &neighbor);
             let cost_guess = new_prior_cost + graph.distance(&neighbor, &goal);
-            let candidate_entry = State::<G::Node> {
+            let candidate_entry = State::<G> {
                 visited: false,
                 prior: Some(current.clone()),
                 prior_cost: new_prior_cost,
                 cost_guess: cost_guess,
+                dir: dir,
             };
             // if unseen or cost_guess is better, update/insert and requeue
             let should_enqueue = match table.entry(neighbor.clone()) {

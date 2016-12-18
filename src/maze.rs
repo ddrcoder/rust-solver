@@ -50,7 +50,11 @@ impl Stored for Maze {
 
 impl Graph for Maze {
     type Node = (usize, usize);
+    type Edge = char;
 
+    fn null_edge() -> char {
+        ' '
+    }
     fn start(&self) -> (usize, usize) {
         self.start
     }
@@ -59,10 +63,10 @@ impl Graph for Maze {
         self.goal
     }
 
-    fn neighbors(&self, &(x, y): &(usize, usize)) -> Vec<(usize, usize)> {
+    fn neighbors(&self, &(x, y): &(usize, usize)) -> Vec<(char, (usize, usize))> {
         self.adjacents(x, y)
             .into_iter()
-            .filter(|&(nx, ny)| self.is_open(nx, ny))
+            .filter(|&(_, (nx, ny))| self.is_open(nx, ny))
             .collect()
     }
 
@@ -97,20 +101,20 @@ impl Maze {
         !self.in_bounds(x, y) || self.open[y * self.width + x]
     }
 
-    fn adjacents(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        let mut list = Vec::<(usize, usize)>::with_capacity(4);
+    fn adjacents(&self, x: usize, y: usize) -> Vec<(char, (usize, usize))> {
+        let mut list = Vec::<(char, (usize, usize))>::with_capacity(4);
         // avoid pillars and borders
         if x > 0 {
-            list.push((x - 1, y));
+            list.push(('<', (x - 1, y)));
         }
         if y > 0 {
-            list.push((x, y - 1));
+            list.push(('^', (x, y - 1)));
         }
         if x < self.width - 1 {
-            list.push((x + 1, y));
+            list.push(('>', (x + 1, y)));
         }
         if y < self.height - 1 {
-            list.push((x, y + 1));
+            list.push(('v', (x, y + 1)));
         }
         list
     }
@@ -142,7 +146,7 @@ impl Maze {
             maze.set_open(x, y);
             let mut nexts = maze.adjacents(x, y);
             rand::thread_rng().shuffle(&mut nexts);
-            for (nx, ny) in nexts {
+            for (_, (nx, ny)) in nexts {
                 stack.push((nx, ny, x, y));
             }
         }
@@ -154,10 +158,6 @@ impl Maze {
     }
     pub fn is_marked(&self, x: usize, y: usize) -> bool {
         self.marked[y * self.width + x]
-    }
-
-    pub fn dims(&self) -> (usize, usize) {
-        (self.width, self.height)
     }
 }
 

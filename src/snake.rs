@@ -70,16 +70,16 @@ impl fmt::Display for Level {
         let dim = &self.blocks.magnitudes;
         for y in 0..dim[1] {
             for x in 0..dim[0] {
-                write!(f, "{}", if self.blocks[&[x, y]] { '#' } else { ' ' });
+                write!(f, "{}", if self.blocks[&[x, y]] { '#' } else { ' ' })?
             }
-            write!(f, "\n");
+            write!(f, "\n")?
         }
         Ok(())
     }
 }
 
 #[derive(Clone, Hash, Eq, PartialEq)]
-struct State {
+pub struct State {
     snake: Vec<(u8, u8)>,
     fruits_left: u64,
 }
@@ -96,6 +96,10 @@ impl State {
 
 impl Graph for Level {
     type Node = State;
+    type Edge = char;
+    fn null_edge() -> char {
+        ' '
+    }
     fn start(&self) -> State {
         State {
             snake: self.initial_snake.clone(),
@@ -110,7 +114,6 @@ impl Graph for Level {
     }
     fn distance(&self, a: &State, b: &State) -> usize {
         let fruit_cost = u64::count_ones(a.fruits_left ^ b.fruits_left) as usize;
-        let ((ax, ay), (bx, by)) = (a.head(self), b.head(self));
         fn diff(a: u8, b: u8) -> usize {
             if a > b {
                 a as usize - b as usize
@@ -118,28 +121,42 @@ impl Graph for Level {
                 b as usize - a as usize
             }
         }
-        let distance_cost = diff(ax, bx) + diff(ay, by);
-        fruit_cost + distance_cost
+        fn distance((ax, ay): (u8, u8), (bx, by): (u8, u8)) -> usize {
+            diff(ax, bx) + diff(ay, by)
+        }
+        let worse = if a.fruits_left.count_ones() > b.fruits_left.count_ones() {
+            &a
+        } else {
+            &b
+        };
+        let worse_head = worse.head(self);
+        let fruit_distance = self.fruits
+            .iter()
+            .zip(0..)
+            .filter(|&(_, i)| 0 != ((1 << i) & worse.fruits_left))
+            .map(|(&f, _)| distance(worse_head, f))
+            .max()
+            .unwrap_or(0);
+        let distance_cost = distance(a.head(self), b.head(self));
+        fruit_cost + fruit_distance + distance_cost
     }
 
-    fn neighbors(&self, s: &State) -> Vec<State> {
+    fn neighbors(&self, s: &State) -> Vec<(char, State)> {
         if s.snake.len() == 0 {
             return vec![];
         }
         let &(hx, hy) = &s.snake[0];
-        [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        [('<', -1, 0), ('>', 1, 0), ('^', 0, -1), ('v', 0, 1)]
             .iter()
-            .map(|&(dx, dy)| ((hx as i32) + dx, (hy as i32) + dy))
-            .filter(|&(x, y)| !self.blocks[&[x as usize, y as usize]])
-            .map(|(nx, ny)| (nx as u8, ny as u8))
-            .filter(|&next| !s.snake.iter().any(|&past| past == next))
-            .map(|next| {
+            .map(|&(dir, dx, dy)| (dir, (hx as i32) + dx, (hy as i32) + dy))
+            .filter(|&(_, x, y)| !self.blocks[&[x as usize, y as usize]])
+            .map(|(dir, nx, ny)| (dir, (nx as u8, ny as u8)))
+            .filter(|&(_, next)| !s.snake.iter().any(|&past| past == next))
+            .map(|(dir, next)| {
                 let fruit_hit = self.fruits
                     .iter()
                     .position(|&fruit_pos| fruit_pos == next);
                 let new_fruits_left = if let Some(index) = fruit_hit {
-                    let fruit = &self.fruits[index];
-                    let new = s.fruits_left & !(1 << index);
                     s.fruits_left & !(1 << index)
                 } else {
                     s.fruits_left
@@ -150,18 +167,32 @@ impl Graph for Level {
                     let new_length = if s.fruits_left == new_fruits_left {
                         s.snake.len()
                     } else {
-                        println!("Longer: {}", s.snake.len() + 1);
                         s.snake.len() + 1
                     };
-                    Iterator::chain([next].iter(), s.snake.iter())
+                    let mut falling: Vec<(u8, u8)> = Iterator::chain([next].iter(), s.snake.iter())
                         .take(new_length)
                         .cloned()
-                        .collect()
+                        .collect();
+                    let fall_height = (0..100)
+                        .find(|fall| {
+                            falling.iter().any(|&(sx, sy)| {
+                                self.blocks[&[sx as usize, sy as usize + 1 + fall]]
+                            })
+                        })
+                        .unwrap();
+                    if fall_height != 0 {
+                        for &mut (_, ref mut sy) in &mut falling {
+                            *sy += fall_height as u8;
+                        }
+                        println!("Falling {}", fall_height);
+                    }
+                    falling
                 };
-                State {
+                (dir,
+                 State {
                     snake: new_snake,
                     fruits_left: new_fruits_left,
-                }
+                })
             })
             .collect()
     }

@@ -55,6 +55,7 @@ impl Graph for Maze {
     fn null_edge() -> char {
         ' '
     }
+    
     fn start(&self) -> (usize, usize) {
         self.start
     }

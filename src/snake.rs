@@ -5,10 +5,22 @@ use stored::Stored;
 use std::fmt;
 
 pub struct Level {
-    blocks: NArray<bool>,
+    // 0 = empty
+    // 1 = block
+    // 2 = kill
+    // ... = reserved
+    // 10.. = fruit k + 10
+    map: NArray<u8>,
     fruits: Vec<(u8, u8)>,
-    initial_snake: Vec<(u8, u8)>, // age => pos
+    pub initial_snake: Vec<(u8, u8)>, // age => pos
     exit: (u8, u8),
+}
+
+enum Cell {
+    Block,
+    Kill,
+    Free,
+    Fruit(usize),
 }
 
 impl Level {
@@ -16,7 +28,7 @@ impl Level {
         let w = lines.iter().map(|ref l| l.len()).max().unwrap();
         let h = lines.len();
         let mut level = Level {
-            blocks: NArray::new(2, &[w, h]),
+            map: NArray::new(2, &[w, h]),
             fruits: Vec::new(),
             initial_snake: Vec::new(),
             exit: (0xFF, 0xFF),
@@ -24,24 +36,27 @@ impl Level {
         for (line, y) in lines.iter().zip(0..h) {
             for (ch, x) in line.chars().zip(0..w) {
                 let pos = (x as u8, y as u8);
-                match ch {
-                    '#' => {
-                        level.blocks[&[x, y]] = true;
-                    }
-                    ' ' => {}
-                    'f' => {
+                level.map[&[x, y]] = match ch {
+                    ' ' => 0,
+                    '#' => 1,
+                    '$' => 2,
+                    '@' | 'f' => {
+                        let k = 10 + level.fruits.len();
                         level.fruits.push(pos);
+                        k as u8
                     }
                     'X' => {
                         level.exit = pos;
+                        0
                     }
                     '0'...'9' => {
                         let index = (ch as i32 - '0' as i32) as usize;
                         let path = &mut level.initial_snake;
                         if index >= path.len() {
-                            path.resize(index + 1, (0xCF, 0xCF));
+                            path.resize(index + 1, (0xFF, 0xFF));
                         }
                         path[index] = pos;
+                        0
                     }
                     _ => {
                         panic!("Unexpected char: '{}'", ch);
@@ -56,25 +71,82 @@ impl Level {
         }
         level
     }
+    fn char(&self, x: usize, y: usize) -> char {
+        match self.map[&[x, y]] {
+            0 => ' ',
+            1 => '#',
+            2 => '$',
+            10...50 => '@',
+            _ => '?',
+        }
+    }
+
+    fn cell_type(&self, x: u8, y: u8, state: &State) -> Cell {
+        match self.map[&[x as usize, y as usize]] {
+            1 => Cell::Block,
+            2 => Cell::Kill,
+            0 => Cell::Free,
+            f @ 10...50 => {
+                if ((1 << (f - 10)) & state.fruits_left) != 0 {
+                    Cell::Fruit(f as usize - 10)
+                } else {
+                    Cell::Free
+                }
+            }
+            _ => panic!("Bad map"),
+        }
+    }
+    fn enterable(&self, x: u8, y: u8, state: &State) -> bool {
+        match self.cell_type(x, y, state) {
+            Cell::Block | Cell::Kill => false,
+            _ => true,
+        }
+    }
+
+    fn supportive(&self, x: u8, y: u8, state: &State) -> bool {
+        match self.cell_type(x, y, state) {
+            Cell::Block | Cell::Kill | Cell::Fruit(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn print(&self, state: &State) {
+        let dim = &self.map.magnitudes;
+        for y in 0..dim[1] {
+            for x in 0..dim[0] {
+                let ch = if (x as u8, y as u8) == self.exit {
+                    'X'
+                } else if let Some(snake_index) = state.snake
+                    .iter()
+                    .position(|&(sx, sy)| sx as usize == x && sy as usize == y) {
+                    if snake_index == 0 { 'o' } else { '.' }
+                } else {
+                    match self.cell_type(x as u8, y as u8, state) {
+                        Cell::Block => '#',
+                        Cell::Kill => '$',
+                        Cell::Free => ' ',
+                        Cell::Fruit(f) => {
+                            if state.fruits_left & (1 << f) == 0 {
+                                ' '
+                            } else {
+                                '@'
+                            }
+                        }
+                    }
+                };
+
+                print!("{}", ch);
+            }
+            println!("");
+        }
+        println!("");
+    }
 }
 
 impl Stored for Level {
     fn load<R: BufRead>(reader: &mut R) -> Self {
         let lines: Vec<String> = reader.lines().map(|l| l.ok().unwrap()).collect();
         Level::from_chars(&lines)
-    }
-}
-
-impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dim = &self.blocks.magnitudes;
-        for y in 0..dim[1] {
-            for x in 0..dim[0] {
-                write!(f, "{}", if self.blocks[&[x, y]] { '#' } else { ' ' })?
-            }
-            write!(f, "\n")?
-        }
-        Ok(())
     }
 }
 
@@ -85,6 +157,13 @@ pub struct State {
 }
 
 impl State {
+    pub fn new() -> State {
+        State {
+            snake: vec![],
+            fruits_left: 0,
+        }
+    }
+
     pub fn head(&self, level: &Level) -> (u8, u8) {
         if self.snake.len() == 0 {
             level.exit
@@ -129,16 +208,17 @@ impl Graph for Level {
         } else {
             &b
         };
-        let worse_head = worse.head(self);
-        let fruit_distance = self.fruits
-            .iter()
-            .zip(0..)
-            .filter(|&(_, i)| 0 != ((1 << i) & worse.fruits_left))
-            .map(|(&f, _)| distance(worse_head, f))
-            .max()
-            .unwrap_or(0);
+        // let worse_head = worse.head(self);
+        // let fruit_distance = self.fruits
+        // .iter()
+        // .zip(0..)
+        // .filter(|&(_, i)| 0 != ((1 << i) & worse.fruits_left))
+        // .map(|(&f, _)| distance(worse_head, f))
+        // .max()
+        // .unwrap_or(0);
+        //
         let distance_cost = distance(a.head(self), b.head(self));
-        fruit_cost + fruit_distance + distance_cost
+        fruit_cost + distance_cost
     }
 
     fn neighbors(&self, s: &State) -> Vec<(char, State)> {
@@ -149,50 +229,54 @@ impl Graph for Level {
         [('<', -1, 0), ('>', 1, 0), ('^', 0, -1), ('v', 0, 1)]
             .iter()
             .map(|&(dir, dx, dy)| (dir, (hx as i32) + dx, (hy as i32) + dy))
-            .filter(|&(_, x, y)| !self.blocks[&[x as usize, y as usize]])
             .map(|(dir, nx, ny)| (dir, (nx as u8, ny as u8)))
+            .filter(|&(_, (x, y))| self.enterable(x, y, s))
             .filter(|&(_, next)| !s.snake.iter().any(|&past| past == next))
-            .map(|(dir, next)| {
-                let fruit_hit = self.fruits
-                    .iter()
-                    .position(|&fruit_pos| fruit_pos == next);
-                let new_fruits_left = if let Some(index) = fruit_hit {
-                    s.fruits_left & !(1 << index)
-                } else {
-                    s.fruits_left
-                };
-                let new_snake = if new_fruits_left == 0 && next == self.exit {
-                    vec![]
-                } else {
-                    let new_length = if s.fruits_left == new_fruits_left {
-                        s.snake.len()
-                    } else {
-                        s.snake.len() + 1
-                    };
-                    let mut falling: Vec<(u8, u8)> = Iterator::chain([next].iter(), s.snake.iter())
-                        .take(new_length)
+            .filter_map(|(dir, next)| {
+                let mut new_state = State {
+                    snake: Iterator::chain([next].iter(), s.snake.iter())
                         .cloned()
-                        .collect();
-                    let fall_height = (0..100)
-                        .find(|fall| {
-                            falling.iter().any(|&(sx, sy)| {
-                                self.blocks[&[sx as usize, sy as usize + 1 + fall]]
-                            })
-                        })
-                        .unwrap();
-                    if fall_height != 0 {
-                        for &mut (_, ref mut sy) in &mut falling {
-                            *sy += fall_height as u8;
-                        }
-                        println!("Falling {}", fall_height);
-                    }
-                    falling
+                        .collect(),
+                    fruits_left: s.fruits_left,
                 };
-                (dir,
-                 State {
-                    snake: new_snake,
-                    fruits_left: new_fruits_left,
-                })
+                if let Cell::Fruit(f) = self.cell_type(next.0, next.1, &new_state) {
+                    new_state.fruits_left &= !(1 << f);
+                } else {
+                    new_state.snake.pop();
+                }
+                if new_state.fruits_left == 0 && next == self.exit {
+                    new_state.snake.clear();
+                    return Some((dir, new_state));
+                }
+                let fall_height = (0..100)
+                    .find(|fall| {
+                        new_state.snake
+                            .iter()
+                            .any(|&(sx, sy)| self.supportive(sx, sy + fall + 1, &new_state))
+                    })
+                    .unwrap();
+                if fall_height != 0 {
+                    for &mut (_, ref mut sy) in &mut new_state.snake {
+                        *sy += fall_height as u8;
+                    }
+                }
+                let mut kill = false;
+                let mut nonkill = false;
+                for &(sx, sy) in &new_state.snake {
+                    match self.cell_type(sx, sy + 1, &new_state) {
+                        Cell::Kill => {
+                            kill = true;
+                        }
+                        Cell::Block | Cell::Fruit(_) => {
+                            nonkill = true;
+                        }
+                        _ => {}
+                    }
+                }
+                if kill && !nonkill {
+                    return None;
+                }
+                Some((dir, new_state))
             })
             .collect()
     }

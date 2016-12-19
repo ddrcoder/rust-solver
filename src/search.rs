@@ -104,14 +104,13 @@ pub fn a_star_search<G: Graph>(graph: &G) -> Option<Vec<(G::Edge, G::Node)>> {
             let mut node = current;
             loop {
                 let entry = table.get(node).unwrap();
-                path.push((entry.dir.clone(), current.clone()));
+                path.push((entry.dir.clone(), node.clone()));
                 if let &Some(ref next) = &entry.prior {
                     node = next;
                 } else {
                     break;
                 }
             }
-            path.pop();
             path.reverse();
             println!("States visited: {}", table.len());
             return Some(path);

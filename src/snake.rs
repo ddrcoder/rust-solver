@@ -2,7 +2,7 @@ use search::Graph;
 use n_array::NArray;
 use std::io::BufRead;
 use stored::Stored;
-use std::fmt;
+// use std::fmt;
 
 pub struct Level {
     // 0 = empty
@@ -116,9 +116,10 @@ impl Level {
             for x in 0..dim[0] {
                 let ch = if (x as u8, y as u8) == self.exit {
                     'X'
-                } else if let Some(snake_index) = state.snake
-                    .iter()
-                    .position(|&(sx, sy)| sx as usize == x && sy as usize == y) {
+                } else if let Some(snake_index) =
+                    state.snake
+                        .iter()
+                        .position(|&(sx, sy)| sx as usize == x && sy as usize == y) {
                     if snake_index == 0 { 'o' } else { '.' }
                 } else {
                     match self.cell_type(x as u8, y as u8, state) {
